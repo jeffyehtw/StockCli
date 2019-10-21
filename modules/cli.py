@@ -5,9 +5,8 @@ import sys
 import argparse
 import datetime
 
-from datetime import timedelta
-from tabulate import tabulate
 from matplotlib import pyplot
+from datetime import timedelta
 
 from modules.stockbot import StockBot
 
@@ -59,3 +58,35 @@ class Cli:
         )
         args = parser.parse_args(sys.argv[2:])
         stockbot.update(id=args.id)
+
+    def plot(self):
+        parser = argparse.ArgumentParser(description='')
+        parser.add_argument(
+            'id',
+            nargs='+',
+            help=''
+        )
+        parser.add_argument(
+            '-p', '--period',
+            nargs='+',
+            required=True,
+            help=''
+        )
+        parser.add_argument(
+            '-t', '--type',
+            choices={'trend', 'cdf'},
+            required=True,
+            help=''
+        )
+        parser.add_argument(
+            '-f', '--file',
+            help='file'
+        )
+        args = parser.parse_args(sys.argv[2:])
+        stockbot.plot(
+            id=args.id,
+            start=args.period[0],
+            end=args.period[1],
+            type=args.type,
+            file=args.file
+        )
