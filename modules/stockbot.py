@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as pyplot
 
 from datetime import datetime
+from datetime import timedelta
 from matplotlib import dates as mdates
 from mpl_finance import candlestick_ohlc
 
@@ -21,6 +22,7 @@ from modules.statistics import Statistics
 statistics = Statistics()
 
 __data__ = 'data/{id}.json'
+__earliest__ = datetime(year=2010, month=1, day=1)
 
 class StockBot:
     def __init__(self):
@@ -65,13 +67,33 @@ class StockBot:
         for id in kwargs['id']:
             info = twstock.codes[id]
             start = datetime.strptime(info.start, '%Y/%m/%d')
+            start = max(__earliest__, start)
             end = datetime.now()
             period = [start.strftime('%Y/%m'), end.strftime('%Y/%m')]
             data = pd.date_range(*(pd.to_datetime(period) + pd.offsets.MonthEnd()), freq='MS')
             self.fetch(id=id, data=data)
 
     def update(self, **kwargs):
-        pass
+        for id in kwargs['id']:
+            if id not in self.data.keys():
+                self.init(id=[id])
+                continue
+
+            fetched = self.data[id].keys()
+            fetched = list(set([x[:6] for x in fetched]))
+
+            info = twstock.codes[id]
+            start = datetime.strptime(info.start, '%Y/%m/%d')
+            start = max(__earliest__, start)
+            end = datetime.now()
+            period = [start.strftime('%Y/%m'), end.strftime('%Y/%m')]
+            data = pd.date_range(*(pd.to_datetime(period) + pd.offsets.MonthEnd()), freq='MS')
+            data = [x.strftime('%Y%m') for x in data]
+
+            data = [datetime.strptime(x, '%Y%m') for x in data if x not in fetched]
+            data.append(datetime(year=end.year, month=end.month, day=1))
+
+            self.fetch(id=id, data=data)
 
     def load(self):
         files = sorted(glob.glob('data/*.json'))
