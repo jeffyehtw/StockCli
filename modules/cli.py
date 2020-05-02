@@ -90,3 +90,38 @@ class Cli:
             type=args.type,
             file=args.file
         )
+
+    def dump(self):
+        parser = argparse.ArgumentParser(description='')
+        parser.add_argument(
+            'id',
+            nargs='+',
+            help=''
+        )
+        parser.add_argument(
+            '-p', '--period',
+            nargs='+',
+            required=True,
+            help=''
+        )
+        parser.add_argument(
+            '-o',
+            '--output',
+            default='dump.txt',
+            help='file'
+        )
+        parser.add_argument(
+            '-t',
+            '--type',
+            default='json',
+            choices={ 'json', 'array' },
+            help=''
+        )
+        args = parser.parse_args(sys.argv[2:])
+        stockbot.dump(
+            id=args.id,
+            start=args.period[0],
+            end=args.period[1],
+            output=args.output,
+            type=args.type
+        )

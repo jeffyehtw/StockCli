@@ -27,9 +27,9 @@ __earliest__ = datetime(year=2010, month=1, day=1)
 class StockBot:
     def __init__(self):
         self.data = {}
-        self.load()
+        self._load()
 
-    def fetch(self, **kwargs):
+    def _fetch(self, **kwargs):
         if kwargs['id'] not in self.data.keys():
             self.data[kwargs['id']] = {}
 
@@ -61,7 +61,7 @@ class StockBot:
                     'transaction': stock.transaction[i]
                 }
             self.data[kwargs['id']].update(data)
-            self.dump(id=kwargs['id'])
+            self._dump(id=kwargs['id'])
 
     def init(self, **kwargs):
         for id in kwargs['id']:
@@ -71,7 +71,7 @@ class StockBot:
             end = datetime.now()
             period = [start.strftime('%Y/%m'), end.strftime('%Y/%m')]
             data = pd.date_range(*(pd.to_datetime(period) + pd.offsets.MonthEnd()), freq='MS')
-            self.fetch(id=id, data=data)
+            self._fetch(id=id, data=data)
 
     def update(self, **kwargs):
         for id in kwargs['id']:
@@ -92,20 +92,21 @@ class StockBot:
 
             data = [datetime.strptime(x, '%Y%m') for x in data if x not in fetched]
             data.append(datetime(year=end.year, month=end.month, day=1))
+            data = list(set(data))
 
-            self.fetch(id=id, data=data)
+            self._fetch(id=id, data=data)
 
-    def load(self):
+    def _load(self):
         files = sorted(glob.glob('data/*.json'))
         for file in files:
             with open(file, 'r') as file:
                 self.data.update(json.load(file))
 
-    def dump(self, **kwargs):
+    def _dump(self, **kwargs):
         with open(__data__.format(id=kwargs['id']), 'w') as file:
             json.dump({kwargs['id']: self.data[kwargs['id']]}, file)
 
-    def get(self, **kwargs):
+    def _get(self, **kwargs):
         ret = {}
         history = self.data[kwargs['id']].keys()
         days = pd.date_range(start=kwargs['start'], end=kwargs['end'])
@@ -120,7 +121,7 @@ class StockBot:
     def plot(self, **kwargs):
         for id in kwargs['id']:
             info = twstock.codes[id]
-            data = self.get(id=id, start=kwargs['start'], end=kwargs['end'])
+            data = self._get(id=id, start=kwargs['start'], end=kwargs['end'])
 
             if 'trend' == kwargs['type']:
                 history = data.keys()
@@ -138,13 +139,15 @@ class StockBot:
                 ma_medium = statistics.moving_avg(data=closes, period=20)
                 ma_long = statistics.moving_avg(data=closes, period=60)
 
-                kd = statistics.kd(data=closes)
+                kd = statistics.kd(close=closes, high=highs, low=lows)
+                dif = statistics.dif(data=closes)
+                macd = statistics.macd(data=closes)
 
                 fig = pyplot.figure()
                 pyplot.title(id)
 
                 # figure1: candlestick + moving average
-                ax1 = pyplot.subplot(3, 1, (1, 2))
+                ax1 = pyplot.subplot(4, 1, (1, 2))
                 ax1.plot(dates, ma_short, label='Short', color='navy', linewidth=0.8)
                 ax1.plot(dates, ma_medium, label='Medium', color='goldenrod', linewidth=0.8)
                 ax1.plot(dates, ma_long, label='Long', color='green', linewidth=0.8)
@@ -162,7 +165,7 @@ class StockBot:
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y%m'))
 
                 # figure2: capacity + kd
-                ax2 = pyplot.subplot(3, 1, 3, sharex=ax1)
+                ax2 = pyplot.subplot(4, 1, 3, sharex=ax1)
                 ax2.plot(dates, kd['k'], label='K', color='navy', linewidth=1)
                 ax2.plot(dates, kd['d'], label='D', color='goldenrod', linewidth=1)
                 ax2.legend(loc='upper left')
@@ -170,6 +173,13 @@ class StockBot:
                 ax3 = ax2.twinx()
                 ax3.bar(dates, capacities, width=1)
                 ax3.get_yaxis().set_visible(False)
+
+                # macd
+                ax4 = pyplot.subplot(4, 1, 4, sharex=ax1)
+                ax4.plot(dates, dif, label='DIF', color='navy', linewidth=1)
+                ax4.plot(dates, macd, label='MACD', color='goldenrod', linewidth=1)
+                ax4.legend(loc='upper left')
+                ax4.get_yaxis().set_visible(False)
 
                 pyplot.gcf().autofmt_xdate()
 
@@ -194,3 +204,57 @@ class StockBot:
                     pyplot.show()
                 else:
                     pyplot.savefig(kwargs['file'], dpi=300)
+
+    def dump(self, **kwargs):
+        output = {}
+        for id in kwargs['id']:
+            info = twstock.codes[id]
+            start = datetime.strptime(kwargs['start'], '%Y%m%d')
+            start -= timedelta(days=90)
+            data = self._get(id=id, start=start, end=kwargs['end'])
+
+            history = data.keys()
+            dates = [mdates.date2num(datetime.strptime(
+                day, '%Y%m%d')) for day in history]
+            opens = [data[day]['open'] for day in history]
+            closes = [data[day]['close'] for day in history]
+            highs = [data[day]['high'] for day in history]
+            lows = [data[day]['low'] for day in history]
+
+            kd = statistics.kd(close=closes, high=highs, low=lows)
+            dif = statistics.dif(data=closes)
+            macd = statistics.macd(data=closes)
+
+            ma5 = statistics.moving_avg(data=closes, period=5)
+            ma20 = statistics.moving_avg(data=closes, period=20)
+            ma60 = statistics.moving_avg(data=closes, period=60)
+            ma180 = statistics.moving_avg(data=closes, period=180)
+
+            output[id] = {}
+
+            dates = list(history)
+
+            for i in range(0, len(history)):
+                if dates[i] >= kwargs['start'] and dates[i] <= kwargs['end']:
+                    output[id][dates[i]] = {
+                        'close': closes[i],
+                        'k': kd['k'][i],
+                        'd': kd['d'][i],
+                        'dif': dif[i],
+                        'macd': macd[i],
+                        'ma5': ma5[i],
+                        'ma20': ma20[i],
+                        'ma60': ma60[i],
+                        'ma180': ma180[i]
+                    }
+
+        with open(kwargs['output'], 'w') as file:
+            if 'json' == kwargs['type']:
+                json.dump(output, file)
+            elif 'array' == kwargs['type']:
+                for id in output.keys():
+                    file.write(id + '\n')
+                    for date in output[id].keys():
+                        values = list(output[id][date].values())
+                        values = [str(value) for value in values]
+                        file.write(date + '\t' + '\t'.join(values) + '\n')
