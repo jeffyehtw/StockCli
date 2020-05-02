@@ -8,9 +8,9 @@ import datetime
 from matplotlib import pyplot
 from datetime import timedelta
 
-from modules.stockbot import StockBot
+from modules.stock import Stock
 
-stockbot = StockBot()
+stock = Stock()
 
 # constant
 __version__ = '1.0'
@@ -47,7 +47,7 @@ class Cli:
             help=''
         )
         args = parser.parse_args(sys.argv[2:])
-        stockbot.init(id=args.id)
+        stock.init(id=args.id)
 
     def update(self):
         parser = argparse.ArgumentParser(description='')
@@ -57,7 +57,7 @@ class Cli:
             help=''
         )
         args = parser.parse_args(sys.argv[2:])
-        stockbot.update(id=args.id)
+        stock.update(id=args.id)
 
     def plot(self):
         parser = argparse.ArgumentParser(description='')
@@ -83,7 +83,7 @@ class Cli:
             help='file'
         )
         args = parser.parse_args(sys.argv[2:])
-        stockbot.plot(
+        stock.plot(
             id=args.id,
             start=args.period[0],
             end=args.period[1],
@@ -118,7 +118,7 @@ class Cli:
             help=''
         )
         args = parser.parse_args(sys.argv[2:])
-        stockbot.dump(
+        stock.dump(
             id=args.id,
             start=args.period[0],
             end=args.period[1],

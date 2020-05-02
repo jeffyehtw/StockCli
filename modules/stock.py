@@ -24,7 +24,7 @@ statistics = Statistics()
 __data__ = 'data/{id}.json'
 __earliest__ = datetime(year=2010, month=1, day=1)
 
-class StockBot:
+class Stock:
     def __init__(self):
         self.data = {}
         self._load()
