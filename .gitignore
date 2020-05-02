@@ -105,3 +105,4 @@ venv.bak/
 
 # StockBot
 data/*.json
+*.json
